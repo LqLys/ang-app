@@ -27,7 +27,8 @@ const handleAuthentication = (expiresIn: number, email: string, userId: string, 
     email: email,
     userId: userId,
     token: token,
-    expirationDate: expirationDate
+    expirationDate: expirationDate,
+    redirect: true
   });
 };
 
@@ -64,8 +65,8 @@ export class AuthEffects {
               password: signupAction.payload.password,
               returnSecureToken: true
             }
-          ).pipe(tap( resData => {
-            this.authService.setLogoutTimer(+resData.expiresIn * 1000);
+          ).pipe(tap(resData => {
+              this.authService.setLogoutTimer(+resData.expiresIn * 1000);
             }),
             map(resData => {
               return handleAuthentication(+resData.expiresIn, resData.email, resData.localId, resData.idToken);
@@ -89,7 +90,7 @@ export class AuthEffects {
           password: authData.payload.password,
           returnSecureToken: true
         }
-      ).pipe(tap( resData => {
+      ).pipe(tap(resData => {
           this.authService.setLogoutTimer(+resData.expiresIn * 1000);
         }),
         map(resData => {
@@ -103,8 +104,10 @@ export class AuthEffects {
 
   @Effect({dispatch: false})
   authRedirect = this.actions$.pipe(ofType(AuthActions.AUTHENTICATE_SUCCESS),
-    tap(() => {
-      this.router.navigate(['/']);
+    tap((authSuccessAction: AuthActions.AuthenticateSuccess) => {
+      if (authSuccessAction.payload.redirect) {
+        this.router.navigate(['/']);
+      }
     })
   );
 
@@ -126,7 +129,7 @@ export class AuthEffects {
         _tokenExpirationDate: string;
       } = JSON.parse(localStorage.getItem('userData'));
       if (!userData) {
-        return { type: 'DUMMY'};
+        return {type: 'DUMMY'};
       }
 
       const loadedUser = new User(
@@ -142,10 +145,11 @@ export class AuthEffects {
           email: loadedUser.email,
           userId: loadedUser.id,
           token: loadedUser.token,
-          expirationDate: new Date(userData._tokenExpirationDate)
+          expirationDate: new Date(userData._tokenExpirationDate),
+          redirect: false
         });
       }
-      return { type: 'DUMMY'};
+      return {type: 'DUMMY'};
     }));
 
   constructor(private  actions$: Actions, private http: HttpClient, private router: Router, private authService: AuthService) {
